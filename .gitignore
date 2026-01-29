@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment files
+.env
+.env.*
+
+# Wallet keys (CRITICAL - NEVER COMMIT)
+*.json
+!package.json
+!package-lock.json
+!idl/*.json
+.wallet/
+*.key
+*.keypair
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+*.log
+
+# Testing
+coverage/
+.nyc_output/
