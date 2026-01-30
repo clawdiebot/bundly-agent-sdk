@@ -612,6 +612,94 @@ export async function buildFinalizePumpfunInstruction({
 }
 
 /**
+ * Build collect_pump_fees instruction
+ * Collects SOL creator fees from Pump.fun and sends to fee_sol_vault
+ */
+export async function buildCollectPumpFeesInstruction({ program, mint, collector }) {
+  const [bundlePda] = await deriveBundlePda(mint);
+  
+  // Derive fee_sol_vault PDA
+  const [feeSolVault] = PublicKey.findProgramAddressSync(
+    [Buffer.from('fee_sol_v1'), bundlePda.toBuffer()],
+    program.programId
+  );
+  
+  // Derive pumpfun creator vault PDA
+  const [pumpfunCreatorVault] = PublicKey.findProgramAddressSync(
+    [Buffer.from('creator-vault'), bundlePda.toBuffer()],
+    PUMPFUN_PROGRAM_ID
+  );
+  
+  const PUMPFUN_EVENT_AUTHORITY = new PublicKey('Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1');
+  
+  const ix = await program.methods
+    .collectPumpFees()
+    .accounts({
+      collector,
+      bundle: bundlePda,
+      mint,
+      feeSolVault,
+      pumpfunCreatorVault,
+      pumpfunEventAuthority: PUMPFUN_EVENT_AUTHORITY,
+      pumpfunProgram: PUMPFUN_PROGRAM_ID,
+      systemProgram: SystemProgram.programId
+    })
+    .instruction();
+  
+  return { instruction: ix };
+}
+
+/**
+ * Build collect_pump_amm_fees instruction
+ * Collects WSOL creator fees from Pump AMM and sends to bundle's WSOL account
+ */
+export async function buildCollectPumpAmmFeesInstruction({ program, mint, collector }) {
+  const [bundlePda] = await deriveBundlePda(mint);
+  
+  const WSOL_MINT = new PublicKey('So11111111111111111111111111111111111111112');
+  const PUMP_AMM_PROGRAM_ID = new PublicKey('pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA');
+  const PUMP_AMM_EVENT_AUTHORITY = new PublicKey('GS4CU59F31iL7aR2Q8zVS8DRrcRnXX1yjQ66TqNVQnaR');
+  
+  // Derive coin_creator_vault_authority PDA (from pump AMM program)
+  const [coinCreatorVaultAuthority] = PublicKey.findProgramAddressSync(
+    [Buffer.from('creator_vault'), bundlePda.toBuffer()],
+    PUMP_AMM_PROGRAM_ID
+  );
+  
+  // Get the WSOL ATA for vault authority
+  const coinCreatorVaultAta = getAssociatedTokenAddressSync(
+    WSOL_MINT,
+    coinCreatorVaultAuthority,
+    true
+  );
+  
+  // Get bundle's WSOL account
+  const bundleWsolAccount = getAssociatedTokenAddressSync(
+    WSOL_MINT,
+    bundlePda,
+    true
+  );
+  
+  const ix = await program.methods
+    .collectPumpAmmFees()
+    .accounts({
+      collector,
+      bundle: bundlePda,
+      mint,
+      quoteMint: WSOL_MINT,
+      coinCreatorVaultAuthority,
+      coinCreatorVaultAta,
+      bundleWsolAccount,
+      pumpAmmEventAuthority: PUMP_AMM_EVENT_AUTHORITY,
+      pumpAmmProgram: PUMP_AMM_PROGRAM_ID,
+      tokenProgram: TOKEN_PROGRAM_ID
+    })
+    .instruction();
+  
+  return { instruction: ix };
+}
+
+/**
  * Get instruction discriminator from IDL
  */
 export function getInstructionDiscriminator(name) {
@@ -636,5 +724,7 @@ export default {
   buildFillOrderInstruction,
   buildCancelOrderInstruction,
   buildFinalizePumpfunInstruction,
+  buildCollectPumpFeesInstruction,
+  buildCollectPumpAmmFeesInstruction,
   getInstructionDiscriminator
 };

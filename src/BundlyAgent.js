@@ -502,6 +502,56 @@ export class BundlyAgent {
   }
 
   /**
+   * Collect SOL creator fees from Pump.fun
+   * Transfers accumulated creator fees from pump.fun's creator vault to bundly's fee_sol_vault
+   * NOTE: Use the fundraiser mint, not the pump.fun token mint
+   */
+  async collectPumpFees(mint) {
+    const mintPubkey = typeof mint === 'string' ? new PublicKey(mint) : mint;
+    
+    console.log(`💰 Collecting Pump.fun creator fees (SOL)...`);
+    console.log(`   Mint: ${mintPubkey.toString()}`);
+    
+    const { buildCollectPumpFeesInstruction } = await import('./instructions.js');
+    const { instruction } = await buildCollectPumpFeesInstruction({
+      program: this.program,
+      mint: mintPubkey,
+      collector: this.publicKey
+    });
+    
+    const transaction = new Transaction().add(instruction);
+    const signature = await this.sendAndConfirm(transaction);
+    
+    console.log(`✅ Pump.fun fees collected!`);
+    return signature;
+  }
+
+  /**
+   * Collect WSOL creator fees from Pump AMM
+   * Transfers accumulated creator fees from pump AMM's creator vault to bundly's WSOL account
+   * NOTE: Use the fundraiser mint, not the pump.fun token mint
+   */
+  async collectPumpAmmFees(mint) {
+    const mintPubkey = typeof mint === 'string' ? new PublicKey(mint) : mint;
+    
+    console.log(`💰 Collecting Pump AMM creator fees (WSOL)...`);
+    console.log(`   Mint: ${mintPubkey.toString()}`);
+    
+    const { buildCollectPumpAmmFeesInstruction } = await import('./instructions.js');
+    const { instruction } = await buildCollectPumpAmmFeesInstruction({
+      program: this.program,
+      mint: mintPubkey,
+      collector: this.publicKey
+    });
+    
+    const transaction = new Transaction().add(instruction);
+    const signature = await this.sendAndConfirm(transaction);
+    
+    console.log(`✅ Pump AMM fees collected!`);
+    return signature;
+  }
+
+  /**
    * Check staking position
    */
   async getStakingInfo(mint) {
