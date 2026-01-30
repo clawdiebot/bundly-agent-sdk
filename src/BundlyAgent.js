@@ -389,11 +389,13 @@ export class BundlyAgent {
     console.log(`   Mint: ${mintPubkey.toString()}`);
     console.log(`   Amount: ${amount} tokens`);
     
+    const resolvedRealMint = await this.resolveRealMint(mintPubkey);
     const { instruction } = await buildDepositStakeInstruction({
       program: this.program,
       mint: mintPubkey,
       user: this.publicKey,
-      amount: tokenAmount
+      amount: tokenAmount,
+      realMint: resolvedRealMint
     });
     
     const transaction = new Transaction().add(instruction);
@@ -442,11 +444,13 @@ export class BundlyAgent {
     console.log(`   Mint: ${mintPubkey.toString()}`);
     console.log(`   Amount: ${amount} tokens`);
     
+    const resolvedRealMint = await this.resolveRealMint(mintPubkey);
     const { instruction } = await buildExecuteUnstakeInstruction({
       program: this.program,
       mint: mintPubkey,
       user: this.publicKey,
-      amountBtoken: tokenAmount
+      amountBtoken: tokenAmount,
+      realMint: resolvedRealMint
     });
     
     const transaction = new Transaction().add(instruction);
@@ -465,11 +469,13 @@ export class BundlyAgent {
     console.log(`💸 Withdrawing unstaked tokens...`);
     console.log(`   Mint: ${mintPubkey.toString()}`);
     
+    const resolvedRealMint = await this.resolveRealMint(mintPubkey);
     const { instruction } = await buildWithdrawUnstakedInstruction({
       program: this.program,
       mint: mintPubkey,
       user: this.publicKey,
-      destination
+      destination,
+      realMint: resolvedRealMint
     });
     
     const transaction = new Transaction().add(instruction);
@@ -488,10 +494,12 @@ export class BundlyAgent {
     console.log(`💰 Claiming rewards...`);
     console.log(`   Mint: ${mintPubkey.toString()}`);
     
+    const resolvedRealMint = await this.resolveRealMint(mintPubkey);
     const { instruction } = await buildClaimRewardsInstruction({
       program: this.program,
       mint: mintPubkey,
-      user: this.publicKey
+      user: this.publicKey,
+      realMint: resolvedRealMint
     });
     
     const transaction = new Transaction().add(instruction);
@@ -685,6 +693,27 @@ export class BundlyAgent {
       exists: true,
       data: accountInfo.data
     };
+  }
+
+  /**
+   * Resolve real mint for a bundle (falls back to fundraiser mint if not finalized)
+   */
+  async resolveRealMint(mintPubkey) {
+    try {
+      const state = await this.getBundleState(mintPubkey);
+      if (state?.data) {
+        // Layout: discriminator(8) + admin(32) + mint(32) + real_mint(32)
+        const data = state.data;
+        const offset = 8 + 32 + 32;
+        const realMintBytes = data.slice(offset, offset + 32);
+        const realMint = new PublicKey(realMintBytes);
+        // If real mint is default (all zeros), use fundraiser mint
+        if (!realMint.equals(PublicKey.default)) return realMint;
+      }
+    } catch (e) {
+      // Ignore and fall back
+    }
+    return mintPubkey;
   }
 
   // ============================================================================

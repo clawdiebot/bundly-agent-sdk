@@ -152,14 +152,15 @@ export async function buildPresaleExitInstruction({ program, mint, user, amountB
 /**
  * Build deposit_stake instruction
  */
-export async function buildDepositStakeInstruction({ program, mint, user, amount }) {
+export async function buildDepositStakeInstruction({ program, mint, user, amount, realMint }) {
   const [bundlePda] = await deriveBundlePda(mint);
   const [userStakePda] = await deriveUserStakePda(bundlePda, user);
   const [stakingVaultPda] = await deriveStakingVaultPda(bundlePda);
   const [feeVaultPda] = await deriveFeeVaultPda(bundlePda);
-  
-  const userTokenAccount = getAssociatedTokenAddressSync(mint, user);
-  const realMint = mint;
+  const resolvedRealMint = realMint || mint;
+
+  const userBtokenAccount = getAssociatedTokenAddressSync(mint, user);
+  const userRealTokenAccount = getAssociatedTokenAddressSync(resolvedRealMint, user);
   
   const ix = await program.methods
     .depositStake(new BN(amount))
@@ -167,8 +168,9 @@ export async function buildDepositStakeInstruction({ program, mint, user, amount
       user,
       bundle: bundlePda,
       mint,
-      realMint,
-      userBtoken: userTokenAccount,
+      realMint: resolvedRealMint,
+      userRealToken: userRealTokenAccount,
+      userBtoken: userBtokenAccount,
       stakingVault: stakingVaultPda,
       feeVault: feeVaultPda,
       userStake: userStakePda,
@@ -186,7 +188,7 @@ export async function buildDepositStakeInstruction({ program, mint, user, amount
 export async function buildPrepareUnstakeInstruction({ program, mint, user }) {
   const [bundlePda] = await deriveBundlePda(mint);
   const [userStakePda] = await deriveUserStakePda(bundlePda, user);
-  const [unstakeRequestPda] = await deriveUnstakeRequestPda(mint, user);
+  const [unstakeRequestPda] = await deriveUnstakeRequestPda(bundlePda, user);
   
   const ix = await program.methods
     .prepareUnstake()
@@ -206,17 +208,18 @@ export async function buildPrepareUnstakeInstruction({ program, mint, user }) {
 /**
  * Build execute_unstake instruction
  */
-export async function buildExecuteUnstakeInstruction({ program, mint, user, amountBtoken }) {
+export async function buildExecuteUnstakeInstruction({ program, mint, user, amountBtoken, realMint }) {
   const [bundlePda] = await deriveBundlePda(mint);
   const [userStakePda] = await deriveUserStakePda(bundlePda, user);
-  const [unstakeRequestPda] = await deriveUnstakeRequestPda(mint, user);
-  const [unstakeVaultPda] = await deriveUnstakeVaultPda(mint, user);
+  const [unstakeRequestPda] = await deriveUnstakeRequestPda(bundlePda, user);
+  const [unstakeVaultPda] = await deriveUnstakeVaultPda(mint);
   const [stakingVaultPda] = await deriveStakingVaultPda(bundlePda);
   const [feeVaultPda] = await deriveFeeVaultPda(bundlePda);
-  const [globalFeeTokenAccount] = await deriveGlobalFeeTokenAccount(mint);
+  const resolvedRealMint = realMint || mint;
+  const [globalFeeTokenAccount] = await deriveGlobalFeeTokenAccount(resolvedRealMint);
   
   const userBtokenAccount = getAssociatedTokenAddressSync(mint, user);
-  const realMint = mint;
+  const resolvedRealMintPubkey = resolvedRealMint;
   
   const ix = await program.methods
     .executeUnstake(new BN(amountBtoken))
@@ -224,7 +227,7 @@ export async function buildExecuteUnstakeInstruction({ program, mint, user, amou
       user,
       bundle: bundlePda,
       mint,
-      realMint,
+      realMint: resolvedRealMintPubkey,
       userBtoken: userBtokenAccount,
       stakingVault: stakingVaultPda,
       feeVault: feeVaultPda,
@@ -243,14 +246,14 @@ export async function buildExecuteUnstakeInstruction({ program, mint, user, amou
 /**
  * Build withdraw_unstaked instruction
  */
-export async function buildWithdrawUnstakedInstruction({ program, mint, user, destination }) {
+export async function buildWithdrawUnstakedInstruction({ program, mint, user, destination, realMint }) {
   const [bundlePda] = await deriveBundlePda(mint);
   const [userStakePda] = await deriveUserStakePda(bundlePda, user);
-  const [unstakeRequestPda] = await deriveUnstakeRequestPda(mint, user);
-  const [unstakeVaultPda] = await deriveUnstakeVaultPda(mint, user);
-  
-  const realMint = mint;
-  const destinationAccount = destination || getAssociatedTokenAddressSync(mint, user);
+  const [unstakeRequestPda] = await deriveUnstakeRequestPda(bundlePda, user);
+  const [unstakeVaultPda] = await deriveUnstakeVaultPda(mint);
+
+  const resolvedRealMint = realMint || mint;
+  const destinationAccount = destination || getAssociatedTokenAddressSync(resolvedRealMint, user);
   
   const ix = await program.methods
     .withdrawUnstaked()
@@ -258,7 +261,7 @@ export async function buildWithdrawUnstakedInstruction({ program, mint, user, de
       user,
       bundle: bundlePda,
       mint,
-      realMint,
+      realMint: resolvedRealMint,
       unstakeRequest: unstakeRequestPda,
       unstakeVault: unstakeVaultPda,
       destination: destinationAccount,
@@ -274,16 +277,16 @@ export async function buildWithdrawUnstakedInstruction({ program, mint, user, de
 /**
  * Build claim_rewards instruction
  */
-export async function buildClaimRewardsInstruction({ program, mint, user }) {
+export async function buildClaimRewardsInstruction({ program, mint, user, realMint }) {
   const [bundlePda] = await deriveBundlePda(mint);
   const [userStakePda] = await deriveUserStakePda(bundlePda, user);
   const [stakingVaultPda] = await deriveStakingVaultPda(bundlePda);
   const [feeVaultPda] = await deriveFeeVaultPda(bundlePda);
-  const [globalFeeTokenAccount] = await deriveGlobalFeeTokenAccount(mint);
+  const resolvedRealMint = realMint || mint;
+  const [globalFeeTokenAccount] = await deriveGlobalFeeTokenAccount(resolvedRealMint);
   
   const userBtokenAccount = getAssociatedTokenAddressSync(mint, user);
-  const realMint = mint;
-  const userRealTokenAccount = getAssociatedTokenAddressSync(realMint, user);
+  const userRealTokenAccount = getAssociatedTokenAddressSync(resolvedRealMint, user);
   
   const ix = await program.methods
     .claimRewards()
@@ -291,7 +294,7 @@ export async function buildClaimRewardsInstruction({ program, mint, user }) {
       user,
       bundle: bundlePda,
       mint,
-      realMint,
+      realMint: resolvedRealMint,
       userBtoken: userBtokenAccount,
       userRealToken: userRealTokenAccount,
       stakingVault: stakingVaultPda,
