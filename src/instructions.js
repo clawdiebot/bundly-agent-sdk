@@ -6,7 +6,7 @@
  */
 
 import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
-import { Connection, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import BN from 'bn.js';
 import fs from 'fs';
@@ -309,6 +309,49 @@ export async function buildClaimRewardsInstruction({ program, mint, user, realMi
     .instruction();
   
   return { instruction: ix };
+}
+
+/**
+ * Build claim_rewards instruction (RAW - forces mint writable)
+ * Workaround for CPI permission issues
+ */
+export async function buildClaimRewardsInstructionRaw({ programId, mint, user, realMint }) {
+  const [bundlePda] = await deriveBundlePda(mint);
+  const [userStakePda] = await deriveUserStakePda(bundlePda, user);
+  const [stakingVaultPda] = await deriveStakingVaultPda(bundlePda);
+  const [feeVaultPda] = await deriveFeeVaultPda(bundlePda);
+  const resolvedRealMint = realMint || mint;
+  const [globalFeeTokenAccount] = await deriveGlobalFeeTokenAccount(resolvedRealMint);
+  
+  const userBtokenAccount = getAssociatedTokenAddressSync(mint, user);
+  const userRealTokenAccount = getAssociatedTokenAddressSync(resolvedRealMint, user);
+  
+  const data = getInstructionDiscriminator('claim_rewards');
+  
+  const keys = [
+    { pubkey: user, isSigner: true, isWritable: true },
+    { pubkey: bundlePda, isSigner: false, isWritable: true },
+    { pubkey: mint, isSigner: false, isWritable: true }, // force writable
+    { pubkey: resolvedRealMint, isSigner: false, isWritable: false },
+    { pubkey: userBtokenAccount, isSigner: false, isWritable: true },
+    { pubkey: userRealTokenAccount, isSigner: false, isWritable: true },
+    { pubkey: stakingVaultPda, isSigner: false, isWritable: true },
+    { pubkey: feeVaultPda, isSigner: false, isWritable: true },
+    { pubkey: userStakePda, isSigner: false, isWritable: true },
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    { pubkey: globalFeeTokenAccount, isSigner: false, isWritable: true },
+    { pubkey: GLOBAL_FEE_WALLET, isSigner: false, isWritable: false }
+  ];
+  
+  return { 
+    instruction: new TransactionInstruction({ 
+      programId: programId || BUNDLY_PROGRAM_ID, 
+      keys, 
+      data 
+    }) 
+  };
 }
 
 /**
@@ -723,6 +766,7 @@ export default {
   buildExecuteUnstakeInstruction,
   buildWithdrawUnstakedInstruction,
   buildClaimRewardsInstruction,
+  buildClaimRewardsInstructionRaw,
   buildCreateOrderInstruction,
   buildFillOrderInstruction,
   buildCancelOrderInstruction,

@@ -18,7 +18,7 @@ const ESCROW_SEED = 'escrow_v2';
 const TOKEN_VAULT_SEED = 'vault_v2';
 const FEE_VAULT_SEED = 'fee_vault_v1';
 const STAKING_VAULT_SEED = 'staking_vault_v1';
-const UNSTAKE_VAULT_SEED = 'unstake_vault_v2';
+const UNSTAKE_VAULT_SEED = 'unstake_vault_v1';
 const UNSTAKE_REQUEST_SEED = 'unstake_request_v1';
 const USER_STAKE_SEED = 'user_stake_v1';
 const MINT_SEED = 'bundle_mint_v1';
@@ -76,11 +76,11 @@ export async function deriveStakingVaultPda(bundlePda) {
 }
 
 /**
- * Derive unstake vault PDA for a user
+ * Derive unstake vault PDA for a mint
  */
-export async function deriveUnstakeVaultPda(mint, user) {
+export async function deriveUnstakeVaultPda(mint) {
   return PublicKey.findProgramAddress(
-    [Buffer.from(UNSTAKE_VAULT_SEED), mint.toBuffer(), user.toBuffer()],
+    [Buffer.from(UNSTAKE_VAULT_SEED), mint.toBuffer()],
     BUNDLY_PROGRAM_ID
   );
 }
@@ -88,9 +88,9 @@ export async function deriveUnstakeVaultPda(mint, user) {
 /**
  * Derive unstake request PDA for a user
  */
-export async function deriveUnstakeRequestPda(mint, user) {
+export async function deriveUnstakeRequestPda(bundlePda, user) {
   return PublicKey.findProgramAddress(
-    [Buffer.from(UNSTAKE_REQUEST_SEED), mint.toBuffer(), user.toBuffer()],
+    [Buffer.from(UNSTAKE_REQUEST_SEED), bundlePda.toBuffer(), user.toBuffer()],
     BUNDLY_PROGRAM_ID
   );
 }
@@ -144,8 +144,8 @@ export async function deriveOrderVaultPda(orderPda) {
 /**
  * Derive global fee token account
  */
-export async function deriveGlobalFeeTokenAccount(mint) {
-  return [getAssociatedTokenAddressSync(mint, GLOBAL_FEE_WALLET), 0];
+export async function deriveGlobalFeeTokenAccount(realMint) {
+  return [getAssociatedTokenAddressSync(realMint, GLOBAL_FEE_WALLET), 0];
 }
 
 /**
@@ -162,7 +162,7 @@ export async function deriveAllBundlePdas(mint) {
   const [bundlePda] = await deriveBundlePda(mint);
   const [escrowPda] = await deriveEscrowPda(mint);
   const [tokenVaultPda] = await deriveTokenVaultPda(mint);
-  const [feeVaultPda] = await deriveFeeVaultPda(mint);
+  const [feeVaultPda] = await deriveFeeVaultPda(bundlePda);
   const [stakingVaultPda] = await deriveStakingVaultPda(bundlePda);
   
   return {

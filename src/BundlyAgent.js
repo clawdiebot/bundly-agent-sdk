@@ -495,8 +495,11 @@ export class BundlyAgent {
     console.log(`   Mint: ${mintPubkey.toString()}`);
     
     const resolvedRealMint = await this.resolveRealMint(mintPubkey);
-    const { instruction } = await buildClaimRewardsInstruction({
-      program: this.program,
+    console.log(`   Real Mint: ${resolvedRealMint.toString()}`);
+    
+    const { buildClaimRewardsInstructionRaw } = await import('./instructions.js');
+    const { instruction } = await buildClaimRewardsInstructionRaw({
+      programId: this.program.programId,
       mint: mintPubkey,
       user: this.publicKey,
       realMint: resolvedRealMint
