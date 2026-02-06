@@ -18,6 +18,7 @@
   "homepage": "https://bundly.fun",
   "scripts": {
     "example": "node examples/basic-usage.js",
+    "example:claw": "node examples/claw-login-and-post.js",
     "test": "echo \"Tests coming soon\" && exit 0"
   },
   "keywords": [
@@ -44,8 +45,10 @@
     "@pump-fun/pump-sdk": "^1.26.0",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0",
     "form-data": "^4.0.5",
     "ipfs-http-client": "^60.0.1",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "tweetnacl": "^1.0.3"
   }
 }

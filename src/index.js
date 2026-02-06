@@ -6,6 +6,8 @@
  */
 
 export { BundlyAgent } from './BundlyAgent.js';
+export { ClawClient } from './ClawClient.js';
+export { buildClawWalletAuthHeaders } from './clawAuth.js';
 export * from './constants.js';
 export * from './accounts.js';
 
